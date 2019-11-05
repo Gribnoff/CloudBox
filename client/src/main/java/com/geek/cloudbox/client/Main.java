@@ -5,12 +5,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-
-import java.io.FileOutputStream;
-import java.io.OutputStream;
 
 public class Main extends Application {
     @Override
@@ -18,7 +14,6 @@ public class Main extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/Main.fxml"));
         Parent root = fxmlLoader.load();
         Controller controller = fxmlLoader.getController();
-        // Parent root = FXMLLoader.load(getClass().getResource("/Main.fxml"));
         primaryStage.initStyle(StageStyle.TRANSPARENT);
         primaryStage.setTitle("CloudBox");
         Scene scene = new Scene(root, 800, 800);

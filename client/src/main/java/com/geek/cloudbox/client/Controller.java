@@ -1,7 +1,8 @@
 package com.geek.cloudbox.client;
 
+import com.geek.cloudbox.common.*;
+import com.geek.cloudbox.common.AbstractMessage.MsgType;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -12,8 +13,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
@@ -22,6 +21,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,27 +29,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
 
 public class Controller implements Initializable {
-    /*
-    TextInputDialog dialog = new TextInputDialog(file.getName());
-    dialog.setTitle("Загрузка файла");
-    dialog.setHeaderText("Загрузка файла");
-    dialog.setContentText("Укажите новое имя файла:");
-    Optional<String> result = dialog.showAndWait();
-    if (result.isPresent()) {
-
-    FileChooser
-     */
 
     @FXML
     ListView<Path> localStorage, cloudStorage;
-
-    @FXML
-    ListView<String> simpleListView;
 
     @FXML
     Label filesDragAndDrop, labelDragWindow;
@@ -60,19 +46,25 @@ public class Controller implements Initializable {
     @FXML
     StackPane mainStackPane;
 
-    @FXML
-    Button btnShowSelectedElement;
+    private Comparator<Path> fileListComparator = (p1, p2) -> Boolean.compare(Files.isDirectory(p2), Files.isDirectory(p1));
 
-    SimpleBooleanProperty btnDisabled = new SimpleBooleanProperty(false);
-    Comparator<Path> fileListComparator = new Comparator<Path>() {
-        @Override
-        public int compare(Path p1, Path p2) {
-            return Boolean.compare(Files.isDirectory(p2), Files.isDirectory(p1));
-        }
-    };
+    private static Deque<Path> currentLocalDir = new ArrayDeque<>();
+    private static Deque<Path> currentCloudDir = new ArrayDeque<>();
+    static {
+        clearLocalStorage();
+        clearCloudStorage();
+    }
 
-    // Выполняется при старте контроллера
-    // Для работы этого метода необходимо чтобы контроллер реализовал интерфейс Initializable
+    private static void clearCloudStorage() {
+        currentCloudDir.clear();
+        currentCloudDir.add(Paths.get("testFiles/cloudStorage"));
+    }
+
+    private static void clearLocalStorage() {
+        currentLocalDir.clear();
+        currentLocalDir.add(Paths.get("testFiles/localStorage"));
+    }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         initializeLocalStorageListView();
@@ -82,13 +74,49 @@ public class Controller implements Initializable {
         initializeSceneStyle();
 //        initializeSimpleListView();
 //        btnShowSelectedElement.disableProperty().bind(btnDisabled);
+        Network.start();
+        initializeListeningThread();
     }
 
-    // Показывает Alert с возможностью нажатия одной из двух кнопок
+    private void initializeListeningThread() {
+        Thread t = new Thread(() -> {
+            try {
+                while (true) {
+                    AbstractMessage am = Network.readObject();
+                    if (am.isTypeOf(MsgType.FILE_MESSAGE)) {
+                        FileMessage fm = (FileMessage) am;
+                        Files.write(Paths.get("testFiles/localStorage/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
+                        System.out.println("Download complete: " + fm.getFilename());
+                        refreshLocalFilesList();
+                    } else if (am.isTypeOf(MsgType.ACCEPT)) {
+                        System.out.println("Upload accepted by server");
+                        AcceptMessage acm = (AcceptMessage) am;
+                        Path path = Paths.get(acm.getFilename());
+                        Network.sendMsg(new FileMessage(path));
+                        System.out.println("Upload complete: " + acm.getFilename());
+                        Network.sendMsg(new FileListRequest(path.getFileName().toString()));
+                    } else if (am.isTypeOf(MsgType.FILE_LIST)) {
+                        FileListMessage flm = (FileListMessage) am;
+                        clearCloudStorage();
+                        while (flm.getFileList().size() > 0) {
+                            currentCloudDir.add(flm.getFileList().pollFirst());
+                        }
+                        refreshCloudFilesList();
+                    } else
+                        System.out.println(am);
+                }
+            } catch (ClassNotFoundException | IOException e) {
+                e.printStackTrace();
+            } finally {
+                Network.stop();
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+
     public void btnShowAlert(ActionEvent actionEvent) {
-        // Создаем Alert, указываем текст и кнопки, которые на нем должны быть
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Do you agree?", ButtonType.OK, ButtonType.CANCEL);
-        // showAndWait() показывает Alert и блокирует остальное приложение пока мы не закроем Alert
         Optional<ButtonType> result = alert.showAndWait();
         if (result.get().getText().equals("OK")) {
             System.out.println("You clicked OK");
@@ -97,24 +125,53 @@ public class Controller implements Initializable {
         }
     }
 
-    public void initializeLocalStorageListView() {
+    private void initializeLocalStorageListView() {
         localStorage.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        try {
-            Files.list(Paths.get("testFiles/localStorage")).sorted(fileListComparator).forEach(localStorage.getItems()::add);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        refreshLocalFilesList();
         localStorage.setCellFactory(storageListView -> new StorageListCell());
     }
 
-    public void initializeCloudStorageListView() {
+    private void initializeCloudStorageListView() {
         cloudStorage.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        try {
-            Files.list(Paths.get("testFiles/cloudStorage")).sorted(fileListComparator).forEach(cloudStorage.getItems()::add);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        refreshCloudFilesList();
         cloudStorage.setCellFactory(storageListView -> new StorageListCell());
+    }
+
+    private void refreshLocalFilesList() {
+        updateUI(() -> {
+            try {
+                localStorage.getItems().clear();
+//                if (currentLocalDir.size() > 1) {
+//                    localStorage.getItems().add(currentLocalDir.peek());
+//                }
+                Files.list(Paths.get(currentLocalDir.peekLast().toString()))
+                        .sorted(fileListComparator)
+                        .forEach(localStorage.getItems()::add);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void refreshCloudFilesList() {
+        updateUI(() -> {
+            try {
+                cloudStorage.getItems().clear();
+                Files.list(Paths.get(currentCloudDir.peekLast().toString()))
+                        .sorted(fileListComparator)
+                        .forEach(cloudStorage.getItems()::add);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private static void updateUI(Runnable r) {
+        if (Platform.isFxApplicationThread()) {
+            r.run();
+        } else {
+            Platform.runLater(r);
+        }
     }
 
     public void initializeDragAndDropLabel() {
@@ -182,7 +239,7 @@ public class Controller implements Initializable {
         });
     }
 
-    public void initializeSceneStyle() {
+    private void initializeSceneStyle() {
         Platform.runLater(new Runnable() {
             @Override
             public void run() {
@@ -192,12 +249,7 @@ public class Controller implements Initializable {
         });
     }
 
-    public void initializeSimpleListView() {
-        simpleListView.getItems().addAll("Java", "Core", "List", "View");
-
-    }
-
-    public void btnExit(ActionEvent actionEvent) {
+    public void btnExit() {
         System.exit(0);
     }
 
@@ -214,33 +266,54 @@ public class Controller implements Initializable {
         }
     }
 
-    public void printSelectedItemInListView(ActionEvent actionEvent) {
-        System.out.println(simpleListView.getSelectionModel().getSelectedItem());
+    public void uploadFiles() {
+        localStorage.getSelectionModel().getSelectedItems().forEach(filename -> {
+            Network.sendMsg(new UploadRequest(filename.toString()));
+            System.out.println("Trying to UL file: " + filename);
+        });
+        refreshCloudFilesList();
     }
 
-    public void changeBindedBoolean(ActionEvent actionEvent) {
-        btnDisabled.set(!btnDisabled.get());
+    public void downloadFiles() {
+        cloudStorage.getSelectionModel().getSelectedItems().forEach(filename -> {
+            Network.sendMsg(new FileRequest(filename.toString()));
+            System.out.println("Trying to DL file: " + filename);
+        });
+        cloudStorage.getSelectionModel().clearSelection();
+        refreshLocalFilesList();
     }
-
 
     //TODO
-    public void uploadFiles(ActionEvent actionEvent) {
+    public void renameFile() {
 
     }
 
-    public void downloadFiles(ActionEvent actionEvent) {
+    public void deleteFiles() {
+        cloudStorage.getSelectionModel().getSelectedItems().forEach(filename ->{
+            Network.sendMsg(new DeleteRequest(filename.toString()));
+            System.out.println("Trying to Delete file: " + filename);
+        });
+        refreshCloudFilesList();
+    }
+
+    //TODO
+    public void logout() {
 
     }
 
-    public void renameFile(ActionEvent actionEvent) {
-
+    public void localStorageAction(@NotNull MouseEvent mouseEvent) {
+        Path selected = localStorage.getSelectionModel().getSelectedItem();
+        if (mouseEvent.getClickCount() == 2 && Files.isDirectory(selected)) {
+            currentLocalDir.add(selected);
+            refreshLocalFilesList();
+        }
     }
 
-    public void deleteFiles(ActionEvent actionEvent) {
-
-    }
-
-    public void logout(ActionEvent actionEvent) {
-
+    public void cloudStorageAction(@NotNull MouseEvent mouseEvent) {
+        Path selected = cloudStorage.getSelectionModel().getSelectedItem();
+        if (mouseEvent.getClickCount() == 2 && Files.isDirectory(selected)) {
+            currentCloudDir.add(selected);
+            refreshLocalFilesList();
+        }
     }
 }
