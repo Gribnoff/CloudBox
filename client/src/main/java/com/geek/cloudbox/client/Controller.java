@@ -30,6 +30,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class Controller implements Initializable {
 
@@ -285,9 +287,33 @@ public class Controller implements Initializable {
         refreshLocalFilesList();
     }
 
-    //TODO
     public void renameFile() {
+        Path src = cloudStorage.getSelectionModel().getSelectedItem();
 
+        TextInputDialog dialog = new TextInputDialog(src.getFileName().toString());
+
+        dialog.setTitle("Rename file");
+        dialog.setHeaderText("Enter new file name");
+
+        Optional<String> result;
+        AtomicBoolean moved = new AtomicBoolean(false);
+        do {
+            result = dialog.showAndWait();
+
+            result.ifPresent(name -> {
+                if (!Files.exists(Paths.get(src.toString()).subpath(0, src.getNameCount() - 1).resolve(name))) {
+                    try {
+                        Files.move(src, src.resolveSibling(name));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    moved.set(true);
+                } else {
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "File already exists!");
+                    alert.showAndWait();
+                }
+            });
+        } while (!moved.get() && result.isPresent());
     }
 
     public void deleteFiles() {
