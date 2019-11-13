@@ -1,14 +1,14 @@
 package com.geek.cloudbox.common;
 
 public class UploadRequest extends AbstractMessage {
-    private String filename;
+    private String pathString;
 
-    public String getFilename() {
-        return filename;
+    public String getPathString() {
+        return pathString;
     }
 
-    public UploadRequest(String filename) {
-        this.filename = filename;
+    public UploadRequest(String pathString) {
+        this.pathString = pathString;
         this.type = MsgType.UPLOAD_REQUEST;
     }
 }

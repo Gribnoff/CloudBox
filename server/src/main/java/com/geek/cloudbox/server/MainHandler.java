@@ -9,9 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.stream.IntStream;
 
 import static com.geek.cloudbox.common.AbstractMessage.*;
 
@@ -29,13 +26,19 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 }
             } else if (am.isTypeOf(MsgType.UPLOAD_REQUEST)) {
                 UploadRequest ur = (UploadRequest) msg;
-                System.out.println("Trying to UL file: " + ur.getFilename());
-                ctx.writeAndFlush(new AcceptMessage(ur.getFilename()));
+                System.out.println("Trying to UL file: " + ur.getPathString());
+                ctx.writeAndFlush(new AcceptMessage(ur.getPathString()));
             } else if (am.isTypeOf(MsgType.FILE_MESSAGE)) {
                 FileMessage fm = (FileMessage) am;
-                Files.write(Paths.get("testFiles/cloudStorage/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
-                System.out.println("Upload complete");
-            } else if (am.isTypeOf(MsgType.FILE_LIST_REQUEST)) {
+                Path filePath = Paths.get("testFiles/cloudStorage/" + fm.getRealtiveToRootPath());
+                Path folderForFile = filePath.subpath(0, filePath.getNameCount() - 1);
+                if (!Files.exists(folderForFile))
+                    Files.createDirectories(folderForFile);
+                Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
+                System.out.println("Upload complete: " + fm.getPathString());
+//                sendFileList(ctx, folder);
+            } /*
+            else if (am.isTypeOf(MsgType.FILE_LIST_REQUEST)) {
                 FileListRequest flr = (FileListRequest) am;
                 Deque<Path> current = new ArrayDeque<>();
                 String[] path = flr.getPath().split("/");
@@ -43,7 +46,8 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                         .mapToObj(i -> Paths.get(path[i]))
                         .forEach(current::add);
                 ctx.writeAndFlush(new FileListMessage(current));
-            } else if (am.isTypeOf(MsgType.DELETE_REQUEST)) {
+            } */
+            else if (am.isTypeOf(MsgType.DELETE_REQUEST)) {
                 DeleteRequest dr = (DeleteRequest) am;
                 Path path = Paths.get(dr.getFilename());
                 System.out.println("Trying to Delete file: " + path);
@@ -55,6 +59,11 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
         } finally {
             ReferenceCountUtil.release(msg);
         }
+    }
+
+    private void sendFileList(ChannelHandlerContext ctx, Path currentFolder) {
+
+//        ctx.writeAndFlush(new FileListMessage());
     }
 
     @Override

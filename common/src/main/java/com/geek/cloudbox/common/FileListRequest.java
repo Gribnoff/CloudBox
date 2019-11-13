@@ -1,13 +1,15 @@
 package com.geek.cloudbox.common;
 
-public class FileListRequest extends AbstractMessage {
-    private String path;
+import java.nio.file.Path;
 
-    public String getPath() {
+public class FileListRequest extends AbstractMessage {
+    private Path path;
+
+    public Path getPath() {
         return path;
     }
 
-    public FileListRequest(String path) {
+    public FileListRequest(Path path) {
         this.path = path;
         this.type = MsgType.FILE_LIST_REQUEST;
     }

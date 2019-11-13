@@ -4,7 +4,6 @@ import com.geek.cloudbox.common.*;
 import com.geek.cloudbox.common.AbstractMessage.MsgType;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -50,6 +49,7 @@ public class Controller implements Initializable {
 
     private static Deque<Path> currentLocalDir = new ArrayDeque<>();
     private static Deque<Path> currentCloudDir = new ArrayDeque<>();
+
     static {
         clearLocalStorage();
         clearCloudStorage();
@@ -69,9 +69,9 @@ public class Controller implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         initializeLocalStorageListView();
         initializeCloudStorageListView();
-//        initializeDragAndDropLabel();
+        initializeDragAndDropLabel();
 //        initializeWindowDragAndDropLabel();
-        initializeSceneStyle();
+//        initializeSceneStyle();
 //        initializeSimpleListView();
 //        btnShowSelectedElement.disableProperty().bind(btnDisabled);
         Network.start();
@@ -85,16 +85,19 @@ public class Controller implements Initializable {
                     AbstractMessage am = Network.readObject();
                     if (am.isTypeOf(MsgType.FILE_MESSAGE)) {
                         FileMessage fm = (FileMessage) am;
-                        Files.write(Paths.get("testFiles/localStorage/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
-                        System.out.println("Download complete: " + fm.getFilename());
+                        Path filePath = Paths.get("testFiles/localStorage/" + fm.getRealtiveToRootPath());
+                        Path folderForFile = filePath.subpath(0, filePath.getNameCount() - 1);
+                        if (!Files.exists(folderForFile))
+                            Files.createDirectories(folderForFile);
+                        Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
+                        System.out.println("Download complete: " + fm.getPathString());
                         refreshLocalFilesList();
                     } else if (am.isTypeOf(MsgType.ACCEPT)) {
                         System.out.println("Upload accepted by server");
                         AcceptMessage acm = (AcceptMessage) am;
-                        Path path = Paths.get(acm.getFilename());
+                        Path path = Paths.get(acm.getPathString());
                         Network.sendMsg(new FileMessage(path));
-                        System.out.println("Upload complete: " + acm.getFilename());
-                        Network.sendMsg(new FileListRequest(path.getFileName().toString()));
+                        System.out.println("Upload complete: " + acm.getPathString());
                     } else if (am.isTypeOf(MsgType.FILE_LIST)) {
                         FileListMessage flm = (FileListMessage) am;
                         clearCloudStorage();
@@ -137,6 +140,7 @@ public class Controller implements Initializable {
         cloudStorage.setCellFactory(storageListView -> new StorageListCell());
     }
 
+    @FXML
     private void refreshLocalFilesList() {
         updateUI(() -> {
             try {
@@ -144,22 +148,27 @@ public class Controller implements Initializable {
 //                if (currentLocalDir.size() > 1) {
 //                    localStorage.getItems().add(currentLocalDir.peek());
 //                }
-                Files.list(Paths.get(currentLocalDir.peekLast().toString()))
-                        .sorted(fileListComparator)
-                        .forEach(localStorage.getItems()::add);
+                if (currentLocalDir.peekLast() != null) {
+                    Files.list(Paths.get(currentLocalDir.peekLast().toString()))
+                            .sorted(fileListComparator)
+                            .forEach(localStorage.getItems()::add);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
     }
 
+    @FXML
     private void refreshCloudFilesList() {
         updateUI(() -> {
             try {
                 cloudStorage.getItems().clear();
-                Files.list(Paths.get(currentCloudDir.peekLast().toString()))
-                        .sorted(fileListComparator)
-                        .forEach(cloudStorage.getItems()::add);
+                if (currentCloudDir.peekLast() != null) {
+                    Files.list(Paths.get(currentCloudDir.peekLast().toString()))
+                            .sorted(fileListComparator)
+                            .forEach(cloudStorage.getItems()::add);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -202,7 +211,7 @@ public class Controller implements Initializable {
             Stage stage = new Stage();
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/Login.fxml"));
             Parent root = loader.load();
-            LoginController lc = (LoginController) loader.getController();
+            LoginController lc = loader.getController();
             lc.id = 100;
             lc.backController = this;
 
@@ -221,20 +230,13 @@ public class Controller implements Initializable {
         Platform.runLater(() -> {
             Stage stage = (Stage) mainVBox.getScene().getWindow();
 
-            labelDragWindow.setOnMousePressed(new EventHandler<MouseEvent>() {
-                @Override
-                public void handle(MouseEvent mouseEvent) {
-                    // record a delta distance for the drag and drop operation.
-                    dragDeltaX = stage.getX() - mouseEvent.getScreenX();
-                    dragDeltaY = stage.getY() - mouseEvent.getScreenY();
-                }
+            labelDragWindow.setOnMousePressed(mouseEvent -> {
+                dragDeltaX = stage.getX() - mouseEvent.getScreenX();
+                dragDeltaY = stage.getY() - mouseEvent.getScreenY();
             });
-            labelDragWindow.setOnMouseDragged(new EventHandler<MouseEvent>() {
-                @Override
-                public void handle(MouseEvent mouseEvent) {
-                    stage.setX(mouseEvent.getScreenX() + dragDeltaX);
-                    stage.setY(mouseEvent.getScreenY() + dragDeltaY);
-                }
+            labelDragWindow.setOnMouseDragged(mouseEvent -> {
+                stage.setX(mouseEvent.getScreenX() + dragDeltaX);
+                stage.setY(mouseEvent.getScreenY() + dragDeltaY);
             });
         });
     }
@@ -267,9 +269,9 @@ public class Controller implements Initializable {
     }
 
     public void uploadFiles() {
-        localStorage.getSelectionModel().getSelectedItems().forEach(filename -> {
-            Network.sendMsg(new UploadRequest(filename.toString()));
-            System.out.println("Trying to UL file: " + filename);
+        localStorage.getSelectionModel().getSelectedItems().forEach(path -> {
+            Network.sendMsg(new UploadRequest(path.toString()));
+            System.out.println("Trying to UL file: " + path);
         });
         refreshCloudFilesList();
     }
@@ -289,7 +291,7 @@ public class Controller implements Initializable {
     }
 
     public void deleteFiles() {
-        cloudStorage.getSelectionModel().getSelectedItems().forEach(filename ->{
+        cloudStorage.getSelectionModel().getSelectedItems().forEach(filename -> {
             Network.sendMsg(new DeleteRequest(filename.toString()));
             System.out.println("Trying to Delete file: " + filename);
         });
@@ -313,7 +315,7 @@ public class Controller implements Initializable {
         Path selected = cloudStorage.getSelectionModel().getSelectedItem();
         if (mouseEvent.getClickCount() == 2 && Files.isDirectory(selected)) {
             currentCloudDir.add(selected);
-            refreshLocalFilesList();
+            refreshCloudFilesList();
         }
     }
 }

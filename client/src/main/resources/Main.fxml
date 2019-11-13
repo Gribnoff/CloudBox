@@ -8,6 +8,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
+<?import javafx.geometry.Insets?>
 <StackPane fx:id="mainStackPane" prefHeight="600" prefWidth="800" style="-fx-background-color: transparent;"
            xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/8.0.112-ea"
            fx:controller="com.geek.cloudbox.client.Controller">
@@ -40,15 +41,21 @@
 
         <HBox VBox.vgrow="ALWAYS">
             <VBox HBox.hgrow="ALWAYS" alignment="TOP_CENTER">
-                <Label  text="Local files"/>
+                <HBox>
+                    <Label text="Local files" alignment="CENTER"/>
+                    <Button onAction="#refreshLocalFilesList" text="Refresh"/>
+                </HBox>
                 <ListView fx:id="localStorage" VBox.vgrow="ALWAYS" onMouseClicked="#localStorageAction"/>
             </VBox>
             <VBox HBox.hgrow="ALWAYS" alignment="TOP_CENTER">
-                <Label  text="Files in cloud"/>
+                <HBox>
+                    <Label text="Files in cloud" alignment="CENTER"/>
+                    <Button onAction="#refreshCloudFilesList" text="Refresh" />
+                </HBox>
                 <ListView fx:id="cloudStorage" VBox.vgrow="ALWAYS" onMouseClicked="#cloudStorageAction"/>
             </VBox>
         </HBox>
-        <!--
+
         <Label fx:id="filesDragAndDrop" alignment="CENTER" prefHeight="300" prefWidth="400"
                style="-fx-background-color: #fff" text="Drop files here!" wrapText="true"/>
         <HBox alignment="CENTER">
@@ -68,7 +75,7 @@
                 </HBox.margin>
             </Button>
         </HBox>
-    -->
+
     </VBox>
     <!--</StackPane>-->
 

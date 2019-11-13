@@ -1,14 +1,14 @@
 package com.geek.cloudbox.common;
 
 public class AcceptMessage extends AbstractMessage {
-    private String filename;
+    private String pathString;
 
-    public String getFilename() {
-        return filename;
+    public String getPathString() {
+        return pathString;
     }
 
-    public AcceptMessage(String filename) {
-        this.filename = filename;
+    public AcceptMessage(String pathString) {
+        this.pathString = pathString;
         this.type = MsgType.ACCEPT;
     }
 }
