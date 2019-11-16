@@ -1,6 +1,6 @@
 package com.geek.cloudbox.client;
 
-import com.geek.cloudbox.common.AbstractMessage;
+import com.geek.cloudbox.common.messages.AbstractMessage;
 import io.netty.handler.codec.serialization.ObjectDecoderInputStream;
 import io.netty.handler.codec.serialization.ObjectEncoderOutputStream;
 

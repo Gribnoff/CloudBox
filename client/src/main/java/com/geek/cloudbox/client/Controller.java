@@ -1,7 +1,7 @@
 package com.geek.cloudbox.client;
 
-import com.geek.cloudbox.common.*;
-import com.geek.cloudbox.common.AbstractMessage.MsgType;
+import com.geek.cloudbox.common.messages.*;
+import com.geek.cloudbox.common.messages.AbstractMessage.MsgType;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,7 +32,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 public class Controller implements Initializable {
 
@@ -87,7 +87,7 @@ public class Controller implements Initializable {
                     AbstractMessage am = Network.readObject();
                     if (am.isTypeOf(MsgType.FILE_MESSAGE)) {
                         FileMessage fm = (FileMessage) am;
-                        Path filePath = Paths.get("testFiles/localStorage/" + fm.getRealtiveToRootPath());
+                        Path filePath = Paths.get("testFiles/localStorage/" + fm.getRelativeToRootPath());
                         Path folderForFile = filePath.subpath(0, filePath.getNameCount() - 1);
                         if (!Files.exists(folderForFile))
                             Files.createDirectories(folderForFile);
@@ -98,7 +98,8 @@ public class Controller implements Initializable {
                         System.out.println("Upload accepted by server");
                         AcceptMessage acm = (AcceptMessage) am;
                         Path path = Paths.get(acm.getPathString());
-                        Network.sendMsg(new FileMessage(path));
+
+                        uploadFile(path);
                         System.out.println("Upload complete: " + acm.getPathString());
                     } else if (am.isTypeOf(MsgType.FILE_LIST)) {
                         FileListMessage flm = (FileListMessage) am;
@@ -270,7 +271,8 @@ public class Controller implements Initializable {
         }
     }
 
-    public void uploadFiles() {
+    @FXML
+    private void uploadFiles() {
         localStorage.getSelectionModel().getSelectedItems().forEach(path -> {
             Network.sendMsg(new UploadRequest(path.toString()));
             System.out.println("Trying to UL file: " + path);
@@ -278,7 +280,27 @@ public class Controller implements Initializable {
         refreshCloudFilesList();
     }
 
-    public void downloadFiles() {
+    private void uploadFile(Path path) throws IOException {
+        InputStream is = Files.newInputStream(path);
+        FileMessage out = new FileMessage(path);
+        byte[] data = new byte[FileMessage.PART_SIZE];
+        int dataSize;
+        while (is.available() > 0) {
+            dataSize = is.read(data);
+            if (dataSize == FileMessage.PART_SIZE){
+                out.setData(data);
+                Network.sendMsg(out);
+            } else {
+                byte[] lastData = new byte[dataSize];
+                System.arraycopy(data, 0, lastData, 0, dataSize);
+                out.setData(lastData);
+                Network.sendMsg(out);
+            }
+        }
+    }
+
+    @FXML
+    private void downloadFiles() {
         cloudStorage.getSelectionModel().getSelectedItems().forEach(filename -> {
             Network.sendMsg(new FileRequest(filename.toString()));
             System.out.println("Trying to DL file: " + filename);
@@ -287,7 +309,8 @@ public class Controller implements Initializable {
         refreshLocalFilesList();
     }
 
-    public void renameFile() {
+    @FXML
+    private void renameFile() {
         Path src = cloudStorage.getSelectionModel().getSelectedItem();
 
         TextInputDialog dialog = new TextInputDialog(src.getFileName().toString());
@@ -316,7 +339,8 @@ public class Controller implements Initializable {
         } while (!moved.get() && result.isPresent());
     }
 
-    public void deleteFiles() {
+    @FXML
+    private void deleteFiles() {
         cloudStorage.getSelectionModel().getSelectedItems().forEach(filename -> {
             Network.sendMsg(new DeleteRequest(filename.toString()));
             System.out.println("Trying to Delete file: " + filename);
@@ -325,7 +349,8 @@ public class Controller implements Initializable {
     }
 
     //TODO
-    public void logout() {
+    @FXML
+    private void logout() {
 
     }
 

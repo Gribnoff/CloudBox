@@ -1,4 +1,4 @@
-package com.geek.cloudbox.common;
+package com.geek.cloudbox.common.messages;
 
 public class AcceptMessage extends AbstractMessage {
     private String pathString;

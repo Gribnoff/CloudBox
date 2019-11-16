@@ -1,4 +1,4 @@
-package com.geek.cloudbox.common;
+package com.geek.cloudbox.common.messages;
 
 import java.nio.file.Path;
 import java.util.Deque;

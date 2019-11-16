@@ -1,4 +1,4 @@
-package com.geek.cloudbox.common;
+package com.geek.cloudbox.common.messages;
 
 public class DeleteRequest extends AbstractMessage{
     private String filename;

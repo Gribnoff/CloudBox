@@ -1,6 +1,6 @@
 package com.geek.cloudbox.server;
 
-import com.geek.cloudbox.common.*;
+import com.geek.cloudbox.common.messages.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
@@ -10,7 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-import static com.geek.cloudbox.common.AbstractMessage.*;
+import static com.geek.cloudbox.common.messages.AbstractMessage.*;
 
 public class MainHandler extends ChannelInboundHandlerAdapter {
     @Override
@@ -30,12 +30,18 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 ctx.writeAndFlush(new AcceptMessage(ur.getPathString()));
             } else if (am.isTypeOf(MsgType.FILE_MESSAGE)) {
                 FileMessage fm = (FileMessage) am;
-                Path filePath = Paths.get("testFiles/cloudStorage/" + fm.getRealtiveToRootPath());
+                Path filePath = Paths.get("testFiles/cloudStorage/" + fm.getRelativeToRootPath());
                 Path folderForFile = filePath.subpath(0, filePath.getNameCount() - 1);
                 if (!Files.exists(folderForFile))
                     Files.createDirectories(folderForFile);
-                Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
-                System.out.println("Upload complete: " + fm.getPathString());
+
+                if (fm.getPartNumber() == 1)
+                    Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
+                else
+                    Files.write(filePath, fm.getData(), StandardOpenOption.APPEND);
+
+                if (fm.getPartNumber() == fm.getParts())
+                    System.out.println("Upload complete: " + fm.getPathString());
 //                sendFileList(ctx, folder);
             } /*
             else if (am.isTypeOf(MsgType.FILE_LIST_REQUEST)) {
@@ -46,8 +52,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                         .mapToObj(i -> Paths.get(path[i]))
                         .forEach(current::add);
                 ctx.writeAndFlush(new FileListMessage(current));
-            } */
-            else if (am.isTypeOf(MsgType.DELETE_REQUEST)) {
+            } */ else if (am.isTypeOf(MsgType.DELETE_REQUEST)) {
                 DeleteRequest dr = (DeleteRequest) am;
                 Path path = Paths.get(dr.getFilename());
                 System.out.println("Trying to Delete file: " + path);
