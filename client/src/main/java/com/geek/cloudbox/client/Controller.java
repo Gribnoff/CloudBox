@@ -87,19 +87,17 @@ public class Controller implements Initializable {
                     AbstractMessage am = Network.readObject();
                     if (am.isTypeOf(MsgType.FILE_MESSAGE)) {
                         FileMessage fm = (FileMessage) am;
-                        Path filePath = Paths.get("testFiles/localStorage/" + fm.getRelativeToRootPath());
-                        Path folderForFile = filePath.subpath(0, filePath.getNameCount() - 1);
-                        if (!Files.exists(folderForFile))
-                            Files.createDirectories(folderForFile);
-                        Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
-                        System.out.println("Download complete: " + fm.getPathString());
-                        refreshLocalFilesList();
+                        receiveFile(fm);
+
+                        if (fm.getPartNumber() == fm.getParts()) {
+                            System.out.println("Download complete: " + fm.getPathString());
+                            refreshLocalFilesList();
+                        }
                     } else if (am.isTypeOf(MsgType.ACCEPT)) {
                         System.out.println("Upload accepted by server");
                         AcceptMessage acm = (AcceptMessage) am;
-                        Path path = Paths.get(acm.getPathString());
 
-                        uploadFile(path);
+                        uploadFile(acm);
                         System.out.println("Upload complete: " + acm.getPathString());
                     } else if (am.isTypeOf(MsgType.FILE_LIST)) {
                         FileListMessage flm = (FileListMessage) am;
@@ -280,7 +278,8 @@ public class Controller implements Initializable {
         refreshCloudFilesList();
     }
 
-    private void uploadFile(Path path) throws IOException {
+    private void uploadFile(AcceptMessage acm) throws IOException {
+        Path path = Paths.get(acm.getPathString());
         InputStream is = Files.newInputStream(path);
         FileMessage out = new FileMessage(path);
         byte[] data = new byte[FileMessage.PART_SIZE];
@@ -307,6 +306,18 @@ public class Controller implements Initializable {
         });
         cloudStorage.getSelectionModel().clearSelection();
         refreshLocalFilesList();
+    }
+
+    private void receiveFile(FileMessage fm) throws IOException {
+        Path filePath = Paths.get("testFiles/localStorage/" + fm.getRelativeToRootPath());
+        Path folderForFile = filePath.subpath(0, filePath.getNameCount() - 1);
+        if (!Files.exists(folderForFile))
+            Files.createDirectories(folderForFile);
+
+        if (fm.getPartNumber() == 1)
+            Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
+        else
+            Files.write(filePath, fm.getData(), StandardOpenOption.APPEND);
     }
 
     @FXML
