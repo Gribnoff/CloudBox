@@ -4,7 +4,10 @@ import java.io.Serializable;
 
 public abstract class AbstractMessage implements Serializable {
     public enum MsgType {
-        FILE_MESSAGE,
+        LOGIN,
+        AUTH_OK,
+        AUTH_FAIL,
+        FILE,
         FILE_REQUEST,
         UPLOAD_REQUEST,
         ACCEPT,
@@ -14,7 +17,7 @@ public abstract class AbstractMessage implements Serializable {
         FILE_LIST_REQUEST,
     }
 
-    MsgType type;
+    protected MsgType type;
 
     public MsgType getType() {
         return type;

@@ -8,15 +8,14 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-public class Main extends Application {
+public class ClientStart extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/Main.fxml"));
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/Login.fxml"));
         Parent root = fxmlLoader.load();
-        Controller controller = fxmlLoader.getController();
         primaryStage.initStyle(StageStyle.TRANSPARENT);
         primaryStage.setTitle("CloudBox");
-        Scene scene = new Scene(root, 800, 800);
+        Scene scene = new Scene(root, 400, 420);
         scene.setFill(Color.TRANSPARENT);
 
         primaryStage.setScene(scene);
@@ -24,6 +23,7 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) {
+        Network.start();
         launch(args);
     }
 }

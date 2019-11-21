@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox fx:id="window" alignment="center" prefWidth="400.0" xmlns="http://javafx.com/javafx/8.0.172-ea"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.geek.cloudbox.client.LoginController">
+
+    <Pane fx:id="rootNode" prefHeight="400.0" prefWidth="400.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+        <Label layoutX="107.0" layoutY="41.0" text="Добро пожаловать в CloudBox!"/>
+        <Label layoutX="158.0" layoutY="89.0" text="Авторизация"/>
+        <Label layoutX="117.0" layoutY="119.0" text="Логин"/>
+        <Label layoutX="113.0" layoutY="200.0" text="Пароль"/>
+        <TextField fx:id="loginField" layoutX="112.0" layoutY="142.0" promptText="Введите логин"/>
+        <PasswordField fx:id="passField" layoutX="112.0" layoutY="221.0" onAction="#login" promptText="Введите пароль"/>
+        <Button layoutX="134.0" layoutY="311.0" onAction="#login" text="Вход"/>
+        <Button layoutX="199.0" layoutY="311.0" onAction="#goToRegistration" text="Регистрация"/>
+        <Button layoutX="323.0" layoutY="348.0" onAction="#exit" text="Выход"/>
+        <Label fx:id="loginError" layoutX="95.0" layoutY="258.0" styleClass="loginErrorMsg"
+               text="Неверный логин/пароль!" visible="false"/>
+    </Pane>
+</VBox>

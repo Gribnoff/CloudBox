@@ -26,10 +26,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -46,6 +44,9 @@ public class Controller implements Initializable {
 
     @FXML
     StackPane mainStackPane;
+
+    private final static String DEFAULT_LOCAL_FOLDER = "testFiles/localStorage";
+    private byte[] data = new byte[FileMessage.PART_SIZE];
 
     private Comparator<Path> fileListComparator = (p1, p2) -> Boolean.compare(Files.isDirectory(p2), Files.isDirectory(p1));
 
@@ -64,7 +65,7 @@ public class Controller implements Initializable {
 
     private static void clearLocalStorage() {
         currentLocalDir.clear();
-        currentLocalDir.add(Paths.get("testFiles/localStorage"));
+        currentLocalDir.add(Paths.get(DEFAULT_LOCAL_FOLDER));
     }
 
     @Override
@@ -76,7 +77,6 @@ public class Controller implements Initializable {
 //        initializeSceneStyle();
 //        initializeSimpleListView();
 //        btnShowSelectedElement.disableProperty().bind(btnDisabled);
-        Network.start();
         initializeListeningThread();
     }
 
@@ -85,7 +85,7 @@ public class Controller implements Initializable {
             try {
                 while (true) {
                     AbstractMessage am = Network.readObject();
-                    if (am.isTypeOf(MsgType.FILE_MESSAGE)) {
+                    if (am.isTypeOf(MsgType.FILE)) {
                         FileMessage fm = (FileMessage) am;
                         receiveFile(fm);
 
@@ -96,8 +96,10 @@ public class Controller implements Initializable {
                     } else if (am.isTypeOf(MsgType.ACCEPT)) {
                         System.out.println("Upload accepted by server");
                         AcceptMessage acm = (AcceptMessage) am;
+                        Path path = Paths.get(acm.getPathString());
+                        FileMessage fm = new FileMessage(path);
 
-                        uploadFile(acm);
+                        uploadFile(fm, path);
                         System.out.println("Upload complete: " + acm.getPathString());
                     } else if (am.isTypeOf(MsgType.FILE_LIST)) {
                         FileListMessage flm = (FileListMessage) am;
@@ -210,9 +212,9 @@ public class Controller implements Initializable {
     public void btnShowModal(ActionEvent actionEvent) {
         try {
             Stage stage = new Stage();
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Login.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/LoginEx.fxml"));
             Parent root = loader.load();
-            LoginController lc = loader.getController();
+            LoginControllerEx lc = loader.getController();
             lc.id = 100;
             lc.backController = this;
 
@@ -278,22 +280,29 @@ public class Controller implements Initializable {
         refreshCloudFilesList();
     }
 
-    private void uploadFile(AcceptMessage acm) throws IOException {
-        Path path = Paths.get(acm.getPathString());
-        InputStream is = Files.newInputStream(path);
-        FileMessage out = new FileMessage(path);
-        byte[] data = new byte[FileMessage.PART_SIZE];
-        int dataSize;
-        while (is.available() > 0) {
-            dataSize = is.read(data);
-            if (dataSize == FileMessage.PART_SIZE){
-                out.setData(data);
-                Network.sendMsg(out);
-            } else {
-                byte[] lastData = new byte[dataSize];
-                System.arraycopy(data, 0, lastData, 0, dataSize);
-                out.setData(lastData);
-                Network.sendMsg(out);
+    private void uploadFile(FileMessage fm, Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    uploadFile(fm, file);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } else {
+            InputStream is = Files.newInputStream(path);
+            int dataSize;
+            while (is.available() > 0) {
+                dataSize = is.read(data);
+                if (dataSize == FileMessage.PART_SIZE) {
+                    fm.setData(data);
+                    Network.sendMsg(fm);
+                } else {
+                    byte[] lastData = new byte[dataSize];
+                    System.arraycopy(data, 0, lastData, 0, dataSize);
+                    fm.setData(lastData);
+                    Network.sendMsg(fm);
+                }
             }
         }
     }
@@ -309,15 +318,19 @@ public class Controller implements Initializable {
     }
 
     private void receiveFile(FileMessage fm) throws IOException {
-        Path filePath = Paths.get("testFiles/localStorage/" + fm.getRelativeToRootPath());
+        Path filePath = Paths.get(DEFAULT_LOCAL_FOLDER + fm.getRelativeToRootPath());
         Path folderForFile = filePath.subpath(0, filePath.getNameCount() - 1);
         if (!Files.exists(folderForFile))
             Files.createDirectories(folderForFile);
 
-        if (fm.getPartNumber() == 1)
-            Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
-        else
-            Files.write(filePath, fm.getData(), StandardOpenOption.APPEND);
+        if (Files.isDirectory(filePath))
+            Files.createDirectories(filePath);
+        else {
+            if (fm.getPartNumber() == 1)
+                Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
+            else
+                Files.write(filePath, fm.getData(), StandardOpenOption.APPEND);
+        }
     }
 
     @FXML
@@ -378,6 +391,12 @@ public class Controller implements Initializable {
         if (mouseEvent.getClickCount() == 2 && Files.isDirectory(selected)) {
             currentCloudDir.add(selected);
             refreshCloudFilesList();
+        }
+    }
+
+    private static boolean isDirEmpty(final Path directory) throws IOException {
+        try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(directory)) {
+            return !dirStream.iterator().hasNext();
         }
     }
 }

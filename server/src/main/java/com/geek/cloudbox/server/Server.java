@@ -16,6 +16,7 @@ public class Server {
     private void run() throws Exception {
         EventLoopGroup mainGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
+        DBService.connect();
         try {
             ServerBootstrap b = new ServerBootstrap();
             System.out.println("Server started...");
@@ -26,7 +27,7 @@ public class Server {
                             socketChannel.pipeline().addLast(
                                     new ObjectDecoder(50 * 1024 * 1024, ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
-                                    new MainHandler()
+                                    new AuthHandler()
                             );
                         }
                     })
@@ -36,6 +37,7 @@ public class Server {
         } finally {
             mainGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+            DBService.disconnect();
         }
     }
 

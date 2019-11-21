@@ -40,6 +40,10 @@ class Network {
         }
     }
 
+    static boolean checkConnection() {
+        return !socket.isClosed() && socket != null;
+    }
+
     static boolean sendMsg(AbstractMessage msg) {
         try {
             out.writeObject(msg);

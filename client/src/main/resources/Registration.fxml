@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import java.net.URL?>
+<VBox fx:id="window" alignment="center" prefHeight="378.0" prefWidth="400.0" xmlns="http://javafx.com/javafx/8.0.172-ea"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.geek.cloudbox.client.RegistrationController">
+    <stylesheets>
+        <URL value="com\geek\cloudbox\client\css\darcula.css"/>
+    </stylesheets>
+    <MenuBar fx:id="menubar" VBox.vgrow="ALWAYS">
+        <Menu fx:id="file" text="File">
+<!--            <MenuItem fx:id="exit" onAction="#exit" text="Выход"/>-->
+        </Menu>
+        <Menu text="Оформление">
+<!--            <MenuItem onAction="#setDefaultTheme" text="Стандартное"/>-->
+<!--            <MenuItem onAction="#setGrassTheme" text="Травяное"/>-->
+<!--            <MenuItem onAction="#setSeaTheme" text="Морское"/>-->
+<!--            <MenuItem onAction="#setDarculaTheme" text="Darcula"/>-->
+        </Menu>
+    </MenuBar>
+
+    <Pane fx:id="registrationPane" prefHeight="400.0" prefWidth="400.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+        <Label layoutX="107.0" layoutY="12.0" text="Добро пожаловать в GeekChat!"/>
+        <Label layoutX="158.0" layoutY="44.0" text="Регистрация"/>
+
+        <Label layoutX="20.0" layoutY="90.0" text="Логин"/>
+        <TextField fx:id="loginField" layoutX="20.0" layoutY="120.0" promptText="Введите логин"/>
+        <Label layoutX="208.0" layoutY="90.0" text="Ник"/>
+        <TextField fx:id="nicknameField" layoutX="207.0" layoutY="120.0" promptText="Введите ник"/>
+
+        <Label layoutX="20.0" layoutY="171.0" text="Пароль"/>
+        <PasswordField fx:id="passField" layoutX="20.0" layoutY="201.0" promptText="Введите пароль"/>
+        <Label layoutX="207.0" layoutY="171.0" text="Ещё раз пароль"/>
+        <PasswordField fx:id="passCheckField" layoutX="207.0" layoutY="201.0" promptText="Повторите пароль"/>
+
+        <Label fx:id="emptyField" layoutX="116.0" layoutY="238.0" styleClass="loginErrorMsg" text="Заполните все поля!"
+               visible="false"/>
+        <Label fx:id="loginTaken" layoutX="148.0" layoutY="238.0" styleClass="loginErrorMsg" text="Логин занят!"
+               visible="false"/>
+        <Label fx:id="spaceProblem" layoutX="97.0" layoutY="238.0" styleClass="loginErrorMsg"
+               text="Пробелы в логине/нике!" visible="false"/>
+        <Label fx:id="nicknameTaken" layoutX="157.0" layoutY="238.0" styleClass="loginErrorMsg" text="Ник занят!"
+               visible="false"/>
+        <Label fx:id="passWrong" layoutX="37.0" layoutY="238.0" styleClass="loginErrorMsg"
+               text="Пароль не соответствует требованиям!" visible="false"/>
+        <Label fx:id="passNotMatch" layoutX="110.0" layoutY="238.0" styleClass="loginErrorMsg"
+               text="Пароль не совпадает!" visible="false"/>
+
+<!--        <Button layoutX="179.0" layoutY="306.0" onAction="#goToLoginPage" text="Вход"/>-->
+<!--        <Button layoutX="159.0" layoutY="269.0" onAction="#registerTry" text="Регистрация"/>-->
+    </Pane>
+</VBox>

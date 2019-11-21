@@ -44,6 +44,6 @@ public class FileMessage extends AbstractMessage {
         data = new byte[PART_SIZE];
         partNumber = 0;
         parts = (int)(Files.size(path) / PART_SIZE) + 1;
-        type = MsgType.FILE_MESSAGE;
+        type = MsgType.FILE;
     }
 }
